@@ -23,8 +23,10 @@ canvas#scene { display: block; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 10px; color: #93a0ac; }
 .legend i.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
-.sw.res { background: #4fd1a1; } .sw.haz { background: #d9534f; }
-.sw.bld { background: #c9a04f; } .sw.scar { background: #5a3b3b; }
+.sw.res { background: #4fd1a1; } .sw.wood { background: #8a6a3a; }
+.sw.stone { background: #8f96a0; } .sw.bld { background: #c9a04f; }
+.sw.pred { background: #d9534f; } .sw.fire { background: #ff7a18; }
+.sw.scar { background: #5a3b3b; }
 
 #log {
   position: fixed; bottom: 12px; left: 12px; z-index: 10;

@@ -12,13 +12,25 @@ across generations behaviour evolves like **culture** — not script.
 
 | System | File |
 |---|---|
-| Persistent world: terrain, resources, moving storms, cliffs, landmarks, structures, scars | `src/world.js` |
-| Beings: state, personality traits, relationships, learned bias | `src/cube.js` |
-| Limited line-of-radius awareness | `src/perception.js` |
-| Emotion-driven utility AI (survival / safety / social / explore / dominance) | `src/behavior.js` |
-| Social layer: signals, groups, combat, reinforcement, social learning | `src/sim.js` |
-| Generational culture: snapshot survivors → inherited, mutated descendants | `src/generation.js` |
-| Instanced Three.js view + minimap + HUD | `src/render.js`, `src/ui.js` |
+| Persistent world: terrain, typed resources (food/wood/stone), storms, cliffs, **fire**, **day/night**, **seasons**, decaying structures, scars | `src/world.js` |
+| Beings: energy **and health** pools, traits, relationships, learned bias, **spatial memory**, **memory decay**, **lineage/kin**, life cycle & aging | `src/cube.js` |
+| Limited awareness — vision shrinks at night; senses kin, predators, resource types | `src/perception.js` |
+| Emotion-driven utility AI: gather / flee / group / explore / attack / build / rest / **share**, memory-guided navigation | `src/behavior.js` |
+| **Predators** — a non-cube threat species that hunts lone cubes | `src/predator.js` |
+| Social layer: signals, groups, **leadership**, **territory & trespass**, **gossip/reputation**, combat, **sharing**, **disease/contagion**, **in-generation reproduction**, **speciation**, reinforcement, social learning | `src/sim.js` |
+| Generational culture: fitness-weighted snapshot → inherited, mutated descendants | `src/generation.js` |
+| Instanced Three.js view (day/night lighting, rainclouds, fire) + minimap + HUD | `src/render.js`, `src/ui.js` |
+
+## Emergent dynamics you'll see
+
+- **Population boom & bust** — reproduction needs an energy surplus, so tribes
+  grow in good seasons and crash in winter / under predator pressure.
+- **Tribes & territory** — groups form around trust and kinship, appoint
+  leaders, and grow soft territory rings that trespassers are attacked in.
+- **Speciation** — lineages whose traits drift far enough apart stop
+  cooperating and interbreeding, splitting into distinct peoples.
+- **Settlements** — cubes harvest wood/stone, raise shelters (stone lasts
+  longer), and maintain them against decay and fire.
 
 ## How it works
 

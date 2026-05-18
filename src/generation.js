@@ -11,8 +11,9 @@ export function snapshot(cubes, world, gen) {
   const pool = survivors.length ? survivors : cubes; // fall back to the last to die
 
   // weight contribution by how well a cube did
-  const fitness = c => 1 + c.gathered * 0.4 + c.builtCount * 6 +
-    c.kills * 3 + c.age * 0.02 + (c.alive ? 10 : 0);
+  const fitness = c => 1 + c.gathered * 0.35 + c.builtCount * 5 +
+    c.kills * 3 + c.children * 8 + c.shared * 0.2 +
+    c.age * 0.02 + (c.alive ? 10 : 0);
 
   const tAvg = {}, bAvg = {};
   for (const t of TRAITS) tAvg[t] = 0;
@@ -34,6 +35,7 @@ export function snapshot(cubes, world, gen) {
     survivors: survivors.length,
     highGroundCulture,                       // 0..1 "high ground is safe"
     builds: pool.reduce((s, c) => s + c.builtCount, 0),
+    births: cubes.reduce((s, c) => s + c.children, 0),
   };
 }
 

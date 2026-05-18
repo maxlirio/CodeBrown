@@ -29,10 +29,13 @@ export class Renderer {
     this.controls.maxPolarAngle = Math.PI * 0.49;
     this.controls.target.set(0, 4, 0);
 
-    this.scene.add(new THREE.HemisphereLight(0x8fb6d6, 0x202428, 0.9));
-    const sun = new THREE.DirectionalLight(0xfff0d8, 1.1);
-    sun.position.set(40, 80, 30);
-    this.scene.add(sun);
+    this.hemi = new THREE.HemisphereLight(0x8fb6d6, 0x202428, 0.9);
+    this.scene.add(this.hemi);
+    this.sun = new THREE.DirectionalLight(0xfff0d8, 1.1);
+    this.sun.position.set(40, 80, 30);
+    this.scene.add(this.sun);
+    this._dayCol = new THREE.Color(0x0b0d10);
+    this._nightCol = new THREE.Color(0x05070d);
 
     this._buildTerrain(S);
     this._buildWater(S);
@@ -100,11 +103,27 @@ export class Renderer {
       new THREE.InstancedBufferAttribute(new Float32Array(400 * 3), 3);
 
     this.resMesh = this._inst(new THREE.IcosahedronGeometry(0.7, 0),
-      new THREE.MeshStandardMaterial({ color: 0x4fd1a1, emissive: 0x123, roughness: .4 }), 150);
+      new THREE.MeshStandardMaterial({ roughness: .5 }), 150);
+    this.resMesh.instanceColor =
+      new THREE.InstancedBufferAttribute(new Float32Array(150 * 3), 3);
     this.bldMesh = this._inst(new THREE.BoxGeometry(1.6, 1.6, 1.6),
-      new THREE.MeshStandardMaterial({ color: 0xc9a04f, roughness: .9 }), 800);
+      new THREE.MeshStandardMaterial({ roughness: .9 }), 800);
+    this.bldMesh.instanceColor =
+      new THREE.InstancedBufferAttribute(new Float32Array(800 * 3), 3);
     this.scarMesh = this._inst(new THREE.CircleGeometry(1.4, 6),
       new THREE.MeshBasicMaterial({ color: 0x5a3b3b, transparent: true, opacity: .5 }), 600);
+
+    // predators (red prisms) and fire (glowing tetrahedra)
+    this.predMesh = this._inst(new THREE.ConeGeometry(0.9, 1.8, 4),
+      new THREE.MeshStandardMaterial({ color: 0xd9534f, emissive: 0x300, roughness: .6 }), 40);
+    this.fireMesh = this._inst(new THREE.TetrahedronGeometry(1.1, 0),
+      new THREE.MeshStandardMaterial({ color: 0xff7a18, emissive: 0xff4400,
+        emissiveIntensity: 1.4 }), 80);
+    this._food = new THREE.Color(0x4fd1a1);
+    this._wood = new THREE.Color(0x8a6a3a);
+    this._stone = new THREE.Color(0x8f96a0);
+    this._woodB = new THREE.Color(0xc9a04f);
+    this._stoneB = new THREE.Color(0x9aa0aa);
 
     // storms: a puffy raincloud over a falling-rain volume
     this.storms = this.sim.world.storms.map(() => this._makeStorm());
@@ -187,28 +206,64 @@ export class Renderer {
     this.cubeMesh.instanceMatrix.needsUpdate = true;
     this.cubeMesh.instanceColor.needsUpdate = true;
 
-    // resources
+    // resources — coloured by kind (food / wood / stone)
     i = 0;
     for (const r of w.resources) {
-      if (r.amount <= 1) continue;
+      if (r.amount <= 1 || i >= 150) continue;
       m.position.set(r.x, w.height(r.x, r.z) + 0.7, r.z);
       m.scale.setScalar(0.5 + r.amount / r.max);
       m.rotation.set(0, r.amount, 0);
       m.updateMatrix();
-      this.resMesh.setMatrixAt(i++, m.matrix);
+      this.resMesh.setMatrixAt(i, m.matrix);
+      const col = r.kind === 'food' ? this._food : r.kind === 'wood' ? this._wood : this._stone;
+      this.resMesh.instanceColor.setXYZ(i, col.r, col.g, col.b);
+      i++;
     }
-    this.resMesh.count = i; this.resMesh.instanceMatrix.needsUpdate = true;
+    this.resMesh.count = i;
+    this.resMesh.instanceMatrix.needsUpdate = true;
+    this.resMesh.instanceColor.needsUpdate = true;
 
-    // structures
+    // structures — wood vs stone, dimmed as they decay
     i = 0;
     for (const b of w.structures) {
-      m.position.set(b.x, b.y + 0.4, b.z);
-      m.scale.setScalar(1); m.rotation.set(0, 0, 0);
-      m.updateMatrix();
-      this.bldMesh.setMatrixAt(i++, m.matrix);
       if (i >= 800) break;
+      m.position.set(b.x, b.y + 0.4, b.z);
+      m.scale.setScalar(b.kind === 'stone' ? 1.15 : 1);
+      m.rotation.set(0, 0, 0);
+      m.updateMatrix();
+      this.bldMesh.setMatrixAt(i, m.matrix);
+      const base = b.kind === 'stone' ? this._stoneB : this._woodB;
+      const k = 0.45 + 0.55 * (b.hp / b.maxHp);
+      this.bldMesh.instanceColor.setXYZ(i, base.r * k, base.g * k, base.b * k);
+      i++;
     }
-    this.bldMesh.count = i; this.bldMesh.instanceMatrix.needsUpdate = true;
+    this.bldMesh.count = i;
+    this.bldMesh.instanceMatrix.needsUpdate = true;
+    this.bldMesh.instanceColor.needsUpdate = true;
+
+    // predators
+    i = 0;
+    for (const pr of this.sim.predators) {
+      if (!pr.alive || i >= 40) continue;
+      m.position.set(pr.x, pr.y + 0.9, pr.z);
+      m.scale.setScalar(1.6);
+      m.rotation.set(0, pr.heading, 0);
+      m.updateMatrix();
+      this.predMesh.setMatrixAt(i++, m.matrix);
+    }
+    this.predMesh.count = i; this.predMesh.instanceMatrix.needsUpdate = true;
+
+    // fire
+    i = 0;
+    for (const f of w.fires) {
+      if (i >= 80) break;
+      m.position.set(f.x, w.height(f.x, f.z) + 0.9, f.z);
+      m.scale.setScalar(0.7 + Math.random() * 0.6);
+      m.rotation.set(0, Math.random() * 6.28, 0);
+      m.updateMatrix();
+      this.fireMesh.setMatrixAt(i++, m.matrix);
+    }
+    this.fireMesh.count = i; this.fireMesh.instanceMatrix.needsUpdate = true;
 
     // scars
     i = 0;
@@ -240,6 +295,15 @@ export class Renderer {
       }
       u.rg.attributes.position.needsUpdate = true;
     });
+
+    // day / night: dim the lights and darken the sky at night
+    const dl = w.daylight;
+    this.sun.intensity = 0.15 + dl * 1.05;
+    this.hemi.intensity = 0.25 + dl * 0.7;
+    const a = Math.PI * (0.15 + w.dayPhase * 0.7);
+    this.sun.position.set(Math.cos(a) * 80, Math.max(8, Math.sin(a) * 90), 30);
+    this.scene.background.copy(this._nightCol).lerp(this._dayCol, dl);
+    this.scene.fog.color.copy(this.scene.background);
 
     // camera follow: track the centroid of the living population
     if (this.follow && this.cubeMesh.count) {
