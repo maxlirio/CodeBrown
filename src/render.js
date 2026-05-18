@@ -106,13 +106,45 @@ export class Renderer {
     this.scarMesh = this._inst(new THREE.CircleGeometry(1.4, 6),
       new THREE.MeshBasicMaterial({ color: 0x5a3b3b, transparent: true, opacity: .5 }), 600);
 
-    // storms as translucent domes
-    this.storms = this.sim.world.storms.map(() => {
-      const s = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 30, 24, 1, true),
-        new THREE.MeshBasicMaterial({ color: 0x6a7bd9, transparent: true,
-          opacity: 0.16, side: THREE.DoubleSide }));
-      this.scene.add(s); return s;
-    });
+    // storms: a puffy raincloud over a falling-rain volume
+    this.storms = this.sim.world.storms.map(() => this._makeStorm());
+  }
+
+  _makeStorm() {
+    const g = new THREE.Group();
+    const TOP = 4.5, BOT = -15, LEN = 1.0;
+
+    // cloud — a cluster of flattened dark puffs
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0x39414c, roughness: 1, flatShading: true });
+    const puff = new THREE.IcosahedronGeometry(1, 1);
+    for (let i = 0; i < 11; i++) {
+      const p = new THREE.Mesh(puff, cloudMat);
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 0.7;
+      const s = 0.32 + Math.random() * 0.42;
+      p.position.set(Math.cos(a) * rr, 5.4 + Math.random() * 1.3, Math.sin(a) * rr);
+      p.scale.set(s, s * 0.55, s);
+      g.add(p);
+    }
+
+    // rain — line segments cycling from cloud to ground
+    const N = 170;
+    const pos = new Float32Array(N * 6);
+    const heads = new Float32Array(N), xz = new Float32Array(N * 2);
+    for (let i = 0; i < N; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random());
+      xz[i * 2] = Math.cos(a) * rr; xz[i * 2 + 1] = Math.sin(a) * rr;
+      heads[i] = TOP - Math.random() * (TOP - BOT);
+    }
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const rain = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({
+      color: 0x9fb8d8, transparent: true, opacity: 0.45 }));
+    g.add(rain);
+
+    g.userData = { rg, heads, xz, N, TOP, BOT, LEN };
+    this.scene.add(g);
+    return g;
   }
 
   _buildLandmarks() {
@@ -130,12 +162,7 @@ export class Renderer {
     this.terrain.geometry.dispose();
     this._buildTerrain(WORLD.size);
     for (const s of this.storms) this.scene.remove(s);
-    this.storms = this.sim.world.storms.map(() => {
-      const s = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 30, 24, 1, true),
-        new THREE.MeshBasicMaterial({ color: 0x6a7bd9, transparent: true,
-          opacity: 0.16, side: THREE.DoubleSide }));
-      this.scene.add(s); return s;
-    });
+    this.storms = this.sim.world.storms.map(() => this._makeStorm());
   }
 
   sync() {
@@ -195,13 +222,23 @@ export class Renderer {
     }
     this.scarMesh.count = i; this.scarMesh.instanceMatrix.needsUpdate = true;
 
-    // storms
-    this.storms.forEach((s, k) => {
+    // storms — drift the cloud, animate the rain falling
+    this.storms.forEach((g, k) => {
       const st = w.storms[k];
-      if (!st) { s.visible = false; return; }
-      s.visible = true;
-      s.position.set(st.x, 15, st.z);
-      s.scale.set(st.r, 1, st.r);
+      if (!st) { g.visible = false; return; }
+      g.visible = true;
+      g.position.set(st.x, 12, st.z);
+      g.scale.set(st.r, 1, st.r);
+      const u = g.userData, p = u.rg.attributes.position.array;
+      for (let n = 0; n < u.N; n++) {
+        let h = u.heads[n] - 0.7;
+        if (h < u.BOT) h = u.TOP + Math.random() * 2;
+        u.heads[n] = h;
+        const x = u.xz[n * 2], z = u.xz[n * 2 + 1], o = n * 6;
+        p[o] = x; p[o + 1] = h; p[o + 2] = z;
+        p[o + 3] = x; p[o + 4] = h - u.LEN; p[o + 5] = z;
+      }
+      u.rg.attributes.position.needsUpdate = true;
     });
 
     // camera follow: track the centroid of the living population
