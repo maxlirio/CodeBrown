@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CodeBrown — a small living planet</title>
+<link rel="stylesheet" href="styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="hud">
+  <div class="title">CodeBrown <span class="sub">guided emergence</span></div>
+  <div id="stats"></div>
+  <div id="controls">
+    <button id="btnPause">Pause</button>
+    <button id="btnSpeed">Speed: 1x</button>
+    <button id="btnFollow">Free cam</button>
+    <button id="btnReset">Reset world</button>
+  </div>
+  <div class="legend">
+    <span><i class="sw res"></i>resource</span>
+    <span><i class="sw haz"></i>hazard</span>
+    <span><i class="sw bld"></i>structure</span>
+    <span><i class="sw scar"></i>scar</span>
+  </div>
+</div>
+<div id="log"></div>
+<canvas id="minimap" width="200" height="200"></canvas>
+<div id="loading">loading the planet…</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
